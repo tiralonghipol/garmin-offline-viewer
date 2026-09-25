@@ -86,6 +86,19 @@ protected:
                              {5, 1, BaseType::Enum}, {7, 4, BaseType::UInt32},
                              {9, 4, BaseType::UInt32}, {11, 2, BaseType::UInt16},
                              {16, 1, BaseType::UInt8}, {17, 1, BaseType::UInt8}})
+                // zones_target max HR + six hr_zone ceilings (Garmin layout)
+                .definition(7, 7, {{1, 1, BaseType::UInt8}})
+                .data(7, Bytes{}.u8(190))
+                .definition(8, 8, {{1, 1, BaseType::UInt8}})
+                .data(8, Bytes{}.u8(94)).data(8, Bytes{}.u8(113)).data(8, Bytes{}.u8(132))
+                .data(8, Bytes{}.u8(151)).data(8, Bytes{}.u8(170)).data(8, Bytes{}.u8(190))
+                // second session with the newer fields: cadence 76 + 64/128, moving time,
+                // enhanced min altitude, step length (0.1 mm)
+                .definition(9, mesg::kSession,
+                            {{18, 1, BaseType::UInt8}, {92, 1, BaseType::UInt8},
+                             {59, 4, BaseType::UInt32}, {127, 4, BaseType::UInt32},
+                             {134, 2, BaseType::UInt16}})
+                .data(9, Bytes{}.u8(76).u8(64).u32(384'000).u32(2580).u16(12300))
                 // file_creator: software_version 360 -> 3.60
                 .definition(5, 49, {{0, 2, BaseType::UInt16}})
                 .data(5, Bytes{}.u16(360))
@@ -120,6 +133,20 @@ TEST_F(ActivityFromFile, FileInfo) {
     EXPECT_DOUBLE_EQ(*activity_.file.softwareVersion, 3.6);
 }
 
+TEST_F(ActivityFromFile, NewerSessionFields) {
+    ASSERT_EQ(activity_.sessions.size(), 2u);
+    const auto& s = activity_.sessions[0];  // decoded in file order: the new one comes first
+    EXPECT_DOUBLE_EQ(*s.avgCadence, 76.5);
+    EXPECT_DOUBLE_EQ(*s.totalMovingS, 384.0);
+    EXPECT_DOUBLE_EQ(*s.minAltitudeM, 16.0);  // 2580 / 5 - 500
+    EXPECT_DOUBLE_EQ(*s.avgStepLengthM, 1.23);
+}
+
+TEST_F(ActivityFromFile, HeartRateSettings) {
+    EXPECT_EQ(activity_.heartRate.maxHeartRate, 190);
+    EXPECT_EQ(activity_.heartRate.zoneHighBpm, (std::vector<int>{94, 113, 132, 151, 170, 190}));
+}
+
 TEST_F(ActivityFromFile, Laps) {
     ASSERT_EQ(activity_.laps.size(), 1u);
     const auto& lap = activity_.laps[0];
@@ -150,8 +177,8 @@ TEST_F(ActivityFromFile, EnhancedAltitudeIsUsed) {
 }
 
 TEST_F(ActivityFromFile, SessionSummary) {
-    ASSERT_EQ(activity_.sessions.size(), 1u);
-    const auto& s = activity_.sessions[0];
+    ASSERT_EQ(activity_.sessions.size(), 2u);
+    const auto& s = activity_.sessions[1];
     EXPECT_EQ(s.startTime, fit::toTimestamp(1'100'000'000));
     EXPECT_EQ(s.sport, 1);
     EXPECT_DOUBLE_EQ(*s.totalElapsedS, 3600.5);

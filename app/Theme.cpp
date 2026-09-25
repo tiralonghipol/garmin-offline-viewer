@@ -78,6 +78,17 @@ QColor speedColor(double t) {
     return stops.back().color;
 }
 
+QColor zoneColor(int zone) {
+    switch (zone) {
+        case 1: return {0xa3, 0xa3, 0xa3};
+        case 2: return {0x3b, 0x97, 0xf3};
+        case 3: return {0x82, 0xc9, 0x1e};
+        case 4: return {0xf9, 0x89, 0x25};
+        case 5: return {0xd3, 0x20, 0x20};
+        default: return {0xd6, 0xd6, 0xd6};
+    }
+}
+
 QString styleSheet() {
     return QStringLiteral(R"(
         QWidget#page, QWidget#pageContent { background: #f4f5f7; }
@@ -124,11 +135,31 @@ QString styleSheet() {
         QFrame#card { background: white; border: 1px solid #dddddd; border-radius: 4px; }
         QListView#activityList { background: transparent; border: none; outline: none; }
 
-        QTableWidget#splits { border: none; background: white; gridline-color: #eeeeee; }
-        QTableWidget#splits QHeaderView::section {
-            background: white; border: none; border-bottom: 1px solid #dddddd; padding: 4px;
-            color: #777777; font-size: 11px;
+        QTableWidget#laps { border: none; background: white; gridline-color: #eeeeee; }
+        QTableWidget#laps QHeaderView::section {
+            background: white; border: none; border-bottom: 1px solid #dddddd; padding: 6px 4px;
+            color: #555555; font-size: 11px; font-weight: 600;
         }
+
+        /* Stats / Laps / Time in Zones tabs */
+        QTabBar#detailTabs::tab {
+            background: transparent; border: none; border-bottom: 2px solid transparent;
+            padding: 10px 16px; color: #666666; font-size: 13px;
+        }
+        QTabBar#detailTabs::tab:selected { color: #222222; border-bottom: 2px solid #1976d2; }
+        QTabBar#detailTabs::tab:hover { color: #222222; }
+
+        QLabel[role="sectionTitle"] {
+            color: #444444; font-size: 13px; border-bottom: 1px solid #cccccc; padding-bottom: 3px;
+        }
+        QLabel[role="statBig"] { font-size: 19px; color: #222222; }
+        QLabel[role="statCaption"] { color: #777777; font-size: 11px; }
+        QPushButton[role="toggle"] {
+            border: 1px solid #b8b8b8; background: white; padding: 3px 10px; color: #333333;
+            font-size: 11px; margin-left: -1px;
+        }
+        QPushButton[role="toggle"]:checked { background: #6d6d6d; color: white; border-color: #6d6d6d; }
+        QProgressBar[role="zone"] { border: none; background: #efefef; border-radius: 2px; max-height: 14px; }
     )");
 }
 

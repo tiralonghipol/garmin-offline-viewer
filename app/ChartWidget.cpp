@@ -1,5 +1,6 @@
 #include "ChartWidget.hpp"
 
+#include <QLocale>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPainterPath>
@@ -16,9 +17,10 @@ ChartWidget::ChartWidget(QWidget* parent) : QWidget(parent) {
     setMinimumHeight(170);
 }
 
-void ChartWidget::setData(Config config, std::vector<double> xSeconds, std::vector<double> y) {
+void ChartWidget::setData(Config config, std::vector<double> x, std::vector<double> y, XAxis axis) {
     config_ = std::move(config);
-    x_ = std::move(xSeconds);
+    axis_ = axis;
+    x_ = std::move(x);
     y_ = std::move(y);
 
     // Robust range: ignore the extreme 2% so a GPS glitch doesn't flatten the chart.
@@ -35,18 +37,24 @@ void ChartWidget::setData(Config config, std::vector<double> xSeconds, std::vect
     update();
 }
 
-void ChartWidget::setHoverSeconds(std::optional<double> seconds) {
-    if (hover_ == seconds) return;
-    hover_ = seconds;
+void ChartWidget::setHoverIndex(std::optional<std::size_t> index) {
+    if (hover_ == index) return;
+    hover_ = index;
     update();
+}
+
+QString ChartWidget::formatX(double x) const {
+    if (axis_ == XAxis::Time) return QString::fromStdString(fit::formatDuration(x));
+    const double km = x / 1000.0;
+    return QStringLiteral("%1 km").arg(QLocale().toString(km, 'f', km < 10 ? 2 : 1));
 }
 
 QRectF ChartWidget::plotRect() const { return QRectF(rect()).adjusted(56, 30, -14, -24); }
 
-double ChartWidget::toPixelX(double seconds) const {
+double ChartWidget::toPixelX(double x) const {
     const QRectF r = plotRect();
     const double end = x_.empty() ? 1.0 : std::max(x_.back(), 1.0);
-    return r.left() + seconds / end * r.width();
+    return r.left() + x / end * r.width();
 }
 
 double ChartWidget::toPixelY(double value) const {
@@ -56,12 +64,12 @@ double ChartWidget::toPixelY(double value) const {
     return r.bottom() - f * r.height();
 }
 
-std::optional<std::size_t> ChartWidget::nearestIndex(double seconds) const {
+std::optional<std::size_t> ChartWidget::nearestIndex(double x) const {
     if (x_.empty()) return std::nullopt;
-    const auto it = std::lower_bound(x_.begin(), x_.end(), seconds);
+    const auto it = std::lower_bound(x_.begin(), x_.end(), x);
     std::size_t i = static_cast<std::size_t>(it - x_.begin());
     if (i == x_.size()) --i;
-    if (i > 0 && seconds - x_[i - 1] < x_[i] - seconds) --i;
+    if (i > 0 && x - x_[i - 1] < x_[i] - x) --i;
     return i;
 }
 
@@ -100,7 +108,9 @@ void ChartWidget::paintEvent(QPaintEvent*) {
 
     // X labels: pick a step giving roughly 6-10 ticks
     const double end = x_.back();
-    constexpr std::array steps{30.0, 60.0, 120.0, 300.0, 600.0, 900.0, 1800.0, 3600.0, 7200.0};
+    constexpr std::array timeSteps{30.0, 60.0, 120.0, 300.0, 600.0, 900.0, 1800.0, 3600.0, 7200.0};
+    constexpr std::array distanceSteps{100.0, 200.0, 250.0, 500.0, 1000.0, 2000.0, 5000.0, 10000.0, 20000.0};
+    const auto& steps = axis_ == XAxis::Time ? timeSteps : distanceSteps;
     const double step = *std::find_if(steps.begin(), steps.end() - 1,
                                       [end](double s) { return end / s <= 10.0; });
     for (double t = step; t < end; t += step) {
@@ -108,8 +118,7 @@ void ChartWidget::paintEvent(QPaintEvent*) {
         p.setPen(QPen(QColor(0xf2, 0xf2, 0xf2), 1));
         p.drawLine(QPointF(x, r.top()), QPointF(x, r.bottom()));
         p.setPen(theme::kMuted);
-        p.drawText(QRectF(x - 30, r.bottom() + 4, 60, 16), Qt::AlignCenter,
-                   QString::fromStdString(fit::formatDuration(t)));
+        p.drawText(QRectF(x - 34, r.bottom() + 4, 68, 16), Qt::AlignCenter, formatX(t));
     }
 
     // Filled area per run of valid samples
@@ -131,8 +140,9 @@ void ChartWidget::paintEvent(QPaintEvent*) {
         p.strokePath(line, QPen(config_.color.darker(115), 1.3));
     }
 
-    // Average
-    if (config_.average) {
+    // Average (skipped if it's off the visible scale, e.g. a device summary that
+    // disagrees with its own samples)
+    if (config_.average && *config_.average >= yMin_ && *config_.average <= yMax_) {
         const double y = toPixelY(*config_.average);
         p.setPen(QPen(QColor(0x55, 0x55, 0x55), 1, Qt::DashLine));
         p.drawLine(QPointF(r.left(), y), QPointF(r.right(), y));
@@ -146,8 +156,8 @@ void ChartWidget::paintEvent(QPaintEvent*) {
     }
 
     // Hover crosshair + value
-    if (hover_) {
-        if (const auto idx = nearestIndex(*hover_)) {
+    if (hover_ && *hover_ < x_.size()) {
+        if (const std::optional<std::size_t> idx = hover_) {
             const double x = toPixelX(x_[*idx]);
             p.setPen(QPen(QColor(0x33, 0x33, 0x33), 1));
             p.drawLine(QPointF(x, r.top()), QPointF(x, r.bottom()));
@@ -160,8 +170,7 @@ void ChartWidget::paintEvent(QPaintEvent*) {
                                       : config_.formatY    ? config_.formatY(y_[*idx])
                                                            : QString::number(y_[*idx]);
                 const QString text = QStringLiteral("%1  ·  %2")
-                                         .arg(value,
-                                              QString::fromStdString(fit::formatDuration(x_[*idx])));
+                                         .arg(value, formatX(x_[*idx]));
                 const double w = QFontMetricsF(small).horizontalAdvance(text) + 14;
                 QRectF box(std::min(x + 8, r.right() - w), r.top(), w, 20);
                 p.setPen(Qt::NoPen);
@@ -180,7 +189,7 @@ void ChartWidget::mouseMoveEvent(QMouseEvent* event) {
         emit hovered(std::nullopt);
         return;
     }
-    emit hovered((event->position().x() - r.left()) / r.width() * x_.back());
+    emit hovered(nearestIndex((event->position().x() - r.left()) / r.width() * x_.back()));
 }
 
 void ChartWidget::leaveEvent(QEvent*) { emit hovered(std::nullopt); }

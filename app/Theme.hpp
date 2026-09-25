@@ -14,6 +14,7 @@ inline const QColor kBorder{0xdd, 0xdd, 0xdd};
 inline const QColor kHeartRate{0xe5, 0x39, 0x35};
 inline const QColor kPace{0x42, 0x8b, 0xe8};
 inline const QColor kElevation{0x5d, 0x9c, 0x59};
+inline const QColor kCadence{0x9b, 0x59, 0xb6};
 
 enum class Category { Running, Cycling, Other };
 
@@ -26,6 +27,9 @@ enum class Category { Running, Cycling, Other };
 
 // Slow (0) -> fast (1): blue, green, yellow, orange, red. Used by map and legend.
 [[nodiscard]] QColor speedColor(double t);
+
+// Garmin's heart-rate zone colours; 0 = below zone 1.
+[[nodiscard]] QColor zoneColor(int zone);
 
 [[nodiscard]] QString styleSheet();
 

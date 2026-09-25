@@ -15,7 +15,9 @@ qt_add_executable(fitviewer
     MainWindow.cpp            MainWindow.hpp
     Metrics.cpp               Metrics.hpp
     RouteMapWidget.cpp        RouteMapWidget.hpp
+    StatsPanel.cpp            StatsPanel.hpp
     Theme.cpp                 Theme.hpp
+    ZonesPanel.cpp            ZonesPanel.hpp
 )
 target_link_libraries(fitviewer PRIVATE
     fitviewer::fit

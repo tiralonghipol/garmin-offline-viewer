@@ -3,14 +3,19 @@
 #include <QString>
 #include <QWidget>
 #include <optional>
+#include <vector>
 
-class ChartWidget;
+#include "ChartWidget.hpp"
+#include "fit/analysis.hpp"
+
 class QFrame;
 class QHBoxLayout;
 class QLabel;
 class QScrollArea;
 class QTableWidget;
 class RouteMapWidget;
+class StatsPanel;
+class ZonesPanel;
 
 class ActivityDetailPage final : public QWidget {
     Q_OBJECT
@@ -27,9 +32,25 @@ signals:
     void sendRequested(const QString& path);
 
 private:
-    void setHoverSeconds(std::optional<double> seconds);
+    struct Series {
+        ChartWidget* chart = nullptr;
+        ChartWidget::Config config;
+        std::vector<double> y;
+    };
+
+    void setHoverIndex(std::optional<std::size_t> index);
+    void applyXAxis();
+    void updateZones();
+    void fillLaps();
 
     QString path_;
+    fit::Activity activity_;
+    fit::Totals totals_;
+    std::vector<double> xTime_;      // seconds, pauses squeezed out
+    std::vector<double> xDistance_;  // metres
+    bool distanceAxis_ = false;
+    std::vector<Series> series_;
+
     QScrollArea* scroll_ = nullptr;
     QLabel* breadcrumb_ = nullptr;
     QLabel* icon_ = nullptr;
@@ -37,11 +58,10 @@ private:
     QHBoxLayout* stats_ = nullptr;
     QFrame* mapCard_ = nullptr;
     RouteMapWidget* map_ = nullptr;
-    ChartWidget* paceChart_ = nullptr;
-    ChartWidget* heartRateChart_ = nullptr;
-    ChartWidget* elevationChart_ = nullptr;
+    QWidget* axisToggle_ = nullptr;
+    StatsPanel* statsPanel_ = nullptr;
+    QTableWidget* laps_ = nullptr;
+    ZonesPanel* zonesPanel_ = nullptr;
     QLabel* deviceName_ = nullptr;
     QLabel* deviceDetails_ = nullptr;
-    QFrame* splitsCard_ = nullptr;
-    QTableWidget* splits_ = nullptr;
 };

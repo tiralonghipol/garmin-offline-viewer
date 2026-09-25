@@ -41,7 +41,7 @@ struct TrackPoint {
     std::optional<double> distanceM;
     std::optional<double> speedMps;
     std::optional<int> heartRateBpm;
-    std::optional<int> cadence;  // FIT running cadence is strides/min (x2 = steps/min)
+    std::optional<double> cadence;  // rpm incl. fractional part; running: strides/min (x2 = steps/min)
 };
 
 struct SessionSummary {
@@ -49,11 +49,18 @@ struct SessionSummary {
     std::optional<int> sport;
     std::optional<double> totalElapsedS;
     std::optional<double> totalTimerS;
+    std::optional<double> totalMovingS;
     std::optional<double> totalDistanceM;
     std::optional<double> avgSpeedMps;
     std::optional<double> maxSpeedMps;
     std::optional<double> totalAscentM;
     std::optional<double> totalDescentM;
+    std::optional<double> minAltitudeM;
+    std::optional<double> maxAltitudeM;
+    std::optional<double> avgCadence;  // rpm incl. fractional part
+    std::optional<double> maxCadence;
+    std::optional<double> totalCycles;  // strides when running
+    std::optional<double> avgStepLengthM;
     std::optional<int> totalCalories;
     std::optional<int> avgHeartRate;
     std::optional<int> maxHeartRate;
@@ -66,8 +73,16 @@ struct Lap {
     std::optional<double> totalDistanceM;
     std::optional<double> avgSpeedMps;
     std::optional<double> totalAscentM;
+    std::optional<double> totalDescentM;
+    std::optional<double> avgCadence;
     std::optional<int> avgHeartRate;
     std::optional<int> maxHeartRate;
+};
+
+// Heart-rate settings the watch stored with the activity (zones_target, hr_zone).
+struct HeartRateSettings {
+    std::optional<int> maxHeartRate;
+    std::vector<int> zoneHighBpm;  // ceiling of each zone, in file order
 };
 
 // High-level view of an activity file: the parts a viewer cares about.
@@ -76,6 +91,7 @@ struct Activity {
     std::vector<SessionSummary> sessions;
     std::vector<Lap> laps;
     std::vector<TrackPoint> points;
+    HeartRateSettings heartRate;
 };
 
 [[nodiscard]] Activity toActivity(const DecodedFile& decoded);

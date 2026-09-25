@@ -10,19 +10,32 @@ constexpr std::uint8_t kType = 0, kManufacturer = 1, kProduct = 2, kSerial = 3,
 }
 namespace record {
 constexpr std::uint8_t kLat = 0, kLong = 1, kAltitude = 2, kHeartRate = 3, kCadence = 4,
-                       kDistance = 5, kSpeed = 6, kEnhancedSpeed = 73, kEnhancedAltitude = 78;
+                       kDistance = 5, kSpeed = 6, kFractionalCadence = 53, kEnhancedSpeed = 73,
+                       kEnhancedAltitude = 78;
 }
 namespace session {
 constexpr std::uint8_t kStartTime = 2, kSport = 5, kTotalElapsed = 7, kTotalTimer = 8,
-                       kTotalDistance = 9, kTotalCalories = 11, kAvgSpeed = 14, kMaxSpeed = 15,
-                       kAvgHeartRate = 16, kMaxHeartRate = 17, kTotalAscent = 22,
-                       kTotalDescent = 23, kEnhancedAvgSpeed = 124, kEnhancedMaxSpeed = 125;
+                       kTotalDistance = 9, kTotalCycles = 10, kTotalCalories = 11, kAvgSpeed = 14,
+                       kMaxSpeed = 15, kAvgHeartRate = 16, kMaxHeartRate = 17, kAvgCadence = 18,
+                       kMaxCadence = 19, kTotalAscent = 22, kTotalDescent = 23, kMaxAltitude = 50,
+                       kTotalMoving = 59, kMinAltitude = 71, kAvgFractionalCadence = 92,
+                       kMaxFractionalCadence = 93, kTotalFractionalCycles = 94,
+                       kEnhancedAvgSpeed = 124, kEnhancedMaxSpeed = 125, kEnhancedMinAltitude = 127,
+                       kEnhancedMaxAltitude = 128, kAvgStepLength = 134;
 }
 namespace lap {
 constexpr std::uint8_t kStartTime = 2, kTotalTimer = 8, kTotalDistance = 9, kAvgSpeed = 13,
-                       kAvgHeartRate = 15, kMaxHeartRate = 16, kTotalAscent = 21,
-                       kEnhancedAvgSpeed = 110;
+                       kAvgHeartRate = 15, kMaxHeartRate = 16, kAvgCadence = 17, kTotalAscent = 21,
+                       kTotalDescent = 22, kAvgFractionalCadence = 80, kEnhancedAvgSpeed = 110;
 }
+namespace zones_target {
+constexpr std::uint8_t kMaxHeartRate = 1;
+}
+namespace hr_zone {
+constexpr std::uint8_t kHighBpm = 1;
+}
+constexpr std::uint16_t kZonesTargetMesg = 7;
+constexpr std::uint16_t kHrZoneMesg = 8;
 namespace file_creator {
 constexpr std::uint8_t kSoftwareVersion = 0;
 }
@@ -52,6 +65,13 @@ std::optional<double> degrees(const Message& m, std::uint8_t field) {
     return std::nullopt;
 }
 
+// Integer part + optional fractional part (1/128 units), e.g. cadence 74 + 64/128 = 74.5 rpm.
+std::optional<double> withFraction(const Message& m, std::uint8_t whole, std::uint8_t fraction) {
+    const auto w = m.intValue(whole);
+    if (!w) return std::nullopt;
+    return static_cast<double>(*w) + static_cast<double>(m.intValue(fraction).value_or(0)) / 128.0;
+}
+
 template <typename T>
 std::optional<T> firstOf(std::optional<T> preferred, std::optional<T> fallback) {
     return preferred ? preferred : fallback;
@@ -79,7 +99,7 @@ TrackPoint toTrackPoint(const Message& m, Timestamp time) {
         .distanceM = scaled(m, kDistance, 100.0),
         .speedMps = firstOf(scaled(m, kEnhancedSpeed, 1000.0), scaled(m, kSpeed, 1000.0)),
         .heartRateBpm = integer(m, kHeartRate),
-        .cadence = integer(m, kCadence),
+        .cadence = withFraction(m, kCadence, kFractionalCadence),
     };
 }
 
@@ -90,6 +110,7 @@ SessionSummary toSession(const Message& m) {
         .sport = integer(m, kSport),
         .totalElapsedS = scaled(m, kTotalElapsed, 1000.0),
         .totalTimerS = scaled(m, kTotalTimer, 1000.0),
+        .totalMovingS = scaled(m, kTotalMoving, 1000.0),
         .totalDistanceM = scaled(m, kTotalDistance, 100.0),
         .avgSpeedMps =
             firstOf(scaled(m, kEnhancedAvgSpeed, 1000.0), scaled(m, kAvgSpeed, 1000.0)),
@@ -97,6 +118,14 @@ SessionSummary toSession(const Message& m) {
             firstOf(scaled(m, kEnhancedMaxSpeed, 1000.0), scaled(m, kMaxSpeed, 1000.0)),
         .totalAscentM = scaled(m, kTotalAscent, 1.0),
         .totalDescentM = scaled(m, kTotalDescent, 1.0),
+        .minAltitudeM =
+            firstOf(scaled(m, kEnhancedMinAltitude, 5.0, 500.0), scaled(m, kMinAltitude, 5.0, 500.0)),
+        .maxAltitudeM =
+            firstOf(scaled(m, kEnhancedMaxAltitude, 5.0, 500.0), scaled(m, kMaxAltitude, 5.0, 500.0)),
+        .avgCadence = withFraction(m, kAvgCadence, kAvgFractionalCadence),
+        .maxCadence = withFraction(m, kMaxCadence, kMaxFractionalCadence),
+        .totalCycles = withFraction(m, kTotalCycles, kTotalFractionalCycles),
+        .avgStepLengthM = scaled(m, kAvgStepLength, 10000.0),  // 0.1 mm units
         .totalCalories = integer(m, kTotalCalories),
         .avgHeartRate = integer(m, kAvgHeartRate),
         .maxHeartRate = integer(m, kMaxHeartRate),
@@ -112,6 +141,8 @@ Lap toLap(const Message& m) {
         .avgSpeedMps =
             firstOf(scaled(m, kEnhancedAvgSpeed, 1000.0), scaled(m, kAvgSpeed, 1000.0)),
         .totalAscentM = scaled(m, kTotalAscent, 1.0),
+        .totalDescentM = scaled(m, kTotalDescent, 1.0),
+        .avgCadence = withFraction(m, kAvgCadence, kAvgFractionalCadence),
         .avgHeartRate = integer(m, kAvgHeartRate),
         .maxHeartRate = integer(m, kMaxHeartRate),
     };
@@ -192,6 +223,12 @@ Activity toActivity(const DecodedFile& decoded) {
                 break;
             case mesg::kLap:
                 activity.laps.push_back(toLap(m));
+                break;
+            case kZonesTargetMesg:
+                if (const auto max = integer(m, zones_target::kMaxHeartRate)) activity.heartRate.maxHeartRate = max;
+                break;
+            case kHrZoneMesg:
+                if (const auto high = integer(m, hr_zone::kHighBpm)) activity.heartRate.zoneHighBpm.push_back(*high);
                 break;
             case kFileCreatorMesg:
                 activity.file.softwareVersion = scaled(m, file_creator::kSoftwareVersion, 100.0);

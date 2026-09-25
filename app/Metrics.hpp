@@ -17,6 +17,10 @@ QString speed(std::optional<double> metersPerSecond);  // "28,5 kph"
 QString meters(std::optional<double> meters);  // "7 m"
 QString bpm(std::optional<int> beatsPerMinute);  // "128 bpm"
 QString number(std::optional<int> value);
+QString cadence(std::optional<double> rpm, bool running);  // "150 spm" / "85 rpm"
+QString lengthMeters(std::optional<double> meters);        // "1,23 m"
+QString percent(std::optional<double> fraction);           // "67 %"
+QString decimal(std::optional<double> value, int decimals); // "2,8"
 
 struct Metric {
     QString value;

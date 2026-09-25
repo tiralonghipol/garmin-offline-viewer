@@ -116,9 +116,14 @@ activities are in `GARMIN/ACTIVITY/*.FIT`.
 
 The app watches `/media/$USER` and loads the activities as soon as the watch
 is plugged in; otherwise it reopens the last folder. Click an activity for the
-detail page: route map coloured by pace, pace/heart-rate/elevation charts
-(hovering one moves a cursor on all of them and a dot on the map), device info
-and 1 km splits. Esc goes back; Ctrl+O opens a file, Ctrl+Shift+O a folder.
+detail page: route map coloured by pace; pace, heart-rate, elevation and
+cadence charts over time or distance (hovering one moves a cursor on all of
+them and a dot on the map); and Stats / Laps / Time in Zones tabs like Garmin
+Connect's. Every stat uses the value the watch recorded when there is one and
+otherwise computes it from the track (moving time, best pace, min/max
+elevation, cadence, stride length). Heart-rate zones come from the file when
+the watch stored them, otherwise Garmin's default 50-90 % of max HR, with the
+max HR editable in the Time in Zones tab. Esc goes back; Ctrl+O opens a file, Ctrl+Shift+O a folder.
 
 Map tiles come from openstreetmap.org and are cached in
 `~/.cache/fit-viewer/tiles` (per OSM's tile usage policy: identified user
@@ -177,7 +182,7 @@ The full spec and profile are in Garmin's FIT SDK.
 
 ## Exercises to extend it
 
-1. Add a **heart-rate zones** card (time in zone 1-5) to the detail page, with the maths in `libs/fit` and tests first.
+1. Draw the **heart-rate zones** as coloured bands behind the heart-rate chart (the zone maths is already in `libs/fit`).
 2. Show **lap markers** on the map and charts; highlight a lap when its row in the splits table is hovered.
 3. Replace repetitive tests with **parameterised tests** (`TEST_P`) over all base types.
 4. Add an **ASan/UBSan** build via a `CMakePresets.json` of your own, and a **libFuzzer** target for `fit::decode`.

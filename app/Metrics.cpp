@@ -1,6 +1,7 @@
 #include "Metrics.hpp"
 
 #include <QLocale>
+#include <cmath>
 
 #include "Theme.hpp"
 #include "fit/format.hpp"
@@ -33,6 +34,25 @@ QString meters(std::optional<double> m) {
 QString bpm(std::optional<int> v) { return v ? QStringLiteral("%1 bpm").arg(*v) : kMissing; }
 
 QString number(std::optional<int> v) { return v ? QString::number(*v) : kMissing; }
+
+QString cadence(std::optional<double> rpm, bool running) {
+    if (!rpm) return kMissing;
+    // FIT stores running cadence per leg (strides/min); Garmin shows steps/min.
+    return running ? QStringLiteral("%1 spm").arg(std::lround(*rpm * 2.0))
+                   : QStringLiteral("%1 rpm").arg(std::lround(*rpm));
+}
+
+QString lengthMeters(std::optional<double> m) {
+    return m ? QStringLiteral("%1 m").arg(QLocale().toString(*m, 'f', 2)) : kMissing;
+}
+
+QString percent(std::optional<double> fraction) {
+    return fraction ? QStringLiteral("%1 %").arg(std::lround(*fraction * 100.0)) : kMissing;
+}
+
+QString decimal(std::optional<double> value, int decimals) {
+    return value ? QLocale().toString(*value, 'f', decimals) : kMissing;
+}
 
 std::vector<Metric> summary(const fit::Totals& t, bool detailed) {
     std::vector<Metric> out;

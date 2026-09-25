@@ -10,6 +10,7 @@ add_executable(fit_tests
     test_decoder.cpp
     test_format.cpp
     test_geo.cpp
+    test_zones.cpp
 )
 target_link_libraries(fit_tests PRIVATE fitviewer::fit GTest::gtest_main)
 fitviewer_set_warnings(fit_tests)
