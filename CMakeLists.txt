@@ -16,7 +16,9 @@ option(FITVIEWER_BUILD_TESTS "Build the GoogleTest suite" ON)
 option(FITVIEWER_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+include(GNUInstallDirs)
 include(CompilerWarnings)
+include(Version)
 
 # Core library first: everything else depends on it.
 add_subdirectory(libs/fit)
@@ -27,6 +29,9 @@ endif()
 
 if(FITVIEWER_BUILD_GUI)
     add_subdirectory(app)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        include(AppImage)
+    endif()
 endif()
 
 if(FITVIEWER_BUILD_TESTS)

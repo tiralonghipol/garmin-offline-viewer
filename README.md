@@ -9,7 +9,6 @@ dump tool.
 fit-viewer/
 ├── CMakeLists.txt           top level: options, subdirectories
 ├── conanfile.py             dependencies (gtest) + CMake integration
-├── cmake/CompilerWarnings.cmake
 ├── libs/fit/                core library, no Qt dependency
 │   ├── include/fit/         decoder, activity model, analysis (totals, ascent,
 │   │                        smoothing), geo (Web Mercator), format
@@ -22,7 +21,9 @@ fit-viewer/
 │   ├── RouteMapWidget       OpenStreetMap tiles + speed-coloured route
 │   └── ChartWidget          QPainter area charts with a shared hover cursor
 ├── tests/                   GoogleTest suite + FitBuilder test helper
-└── .github/workflows/ci.yml
+├── packaging/               icon (svg/png) and .desktop file
+├── cmake/                   warnings, version from git, AppImage target
+└── .github/workflows/ci.yml build + test; AppImage; release on v* tags
 ```
 
 The core library knows nothing about Qt, so everything that can be tested
@@ -70,6 +71,36 @@ because the CMake files only use `find_package()`:
 ```bash
 cmake -S . -B build/sys -G Ninja && cmake --build build/sys && ctest --test-dir build/sys
 ```
+
+## AppImage and GitHub Releases
+
+```bash
+cmake --build --preset conan-release --target appimage
+./build/Release/fit-viewer-<version>-x86_64.AppImage
+```
+
+The AppImage bundles Qt, so it runs on Ubuntu 24.04 and newer without
+installing anything (built against 24.04's glibc, so not older releases).
+It uses the static AppImage runtime, so `libfuse2` is not needed either.
+The first run downloads linuxdeploy, its Qt plugin and appimagetool into
+`build/Release/appimage-tools/`.
+
+It is a separate target rather than part of every build because packaging
+takes 30-60 s. To package on every build anyway:
+`cmake --preset conan-release -DFITVIEWER_APPIMAGE_ON_BUILD=ON`.
+
+**Publishing a release** is done by CI. Every push builds, tests and packages
+the AppImage (download it from the run's *Artifacts*). Pushing a version tag
+also creates the GitHub Release with the AppImage attached:
+
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+The version comes from `git describe`: `0.2.0` on the tag, `0.2.0-3-gabc1234`
+three commits later, with `-dirty` for uncommitted changes. It is shown at the
+bottom of the sidebar. Re-run `cmake --preset …` after tagging locally.
 
 ## Running
 
@@ -151,4 +182,4 @@ The full spec and profile are in Garmin's FIT SDK.
 3. Replace repetitive tests with **parameterised tests** (`TEST_P`) over all base types.
 4. Add an **ASan/UBSan** build via a `CMakePresets.json` of your own, and a **libFuzzer** target for `fit::decode`.
 5. Export **GPX**, then turn `libs/fit` into a real Conan package: `package()` / `package_info()` plus a `test_package/`, and `conan create .`.
-6. Add `install()` rules and **CPack** to produce a `.deb` or `.zip`.
+6. Use **CPack** to also produce a `.deb` from the existing `install()` rules.

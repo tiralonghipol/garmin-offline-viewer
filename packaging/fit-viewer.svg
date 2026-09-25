@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- FIT Viewer icon: dark tile, route loop coloured slow->fast, heart-rate pulse -->
+  <defs>
+    <linearGradient id="speed" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#1e6fd9"/>
+      <stop offset="0.35" stop-color="#2eb84b"/>
+      <stop offset="0.6" stop-color="#f2d024"/>
+      <stop offset="0.8" stop-color="#f58a1f"/>
+      <stop offset="1" stop-color="#e02a2a"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="52" fill="#141414"/>
+  <path d="M70 186 C 40 150, 52 84, 104 70 C 150 58, 196 78, 198 122 C 200 166, 164 196, 122 190 C 96 186, 84 170, 70 186 Z"
+        fill="none" stroke="url(#speed)" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="62,132 92,132 106,106 124,158 140,118 150,132 194,132"
+            fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="70" cy="186" r="13" fill="#2e9d3f" stroke="#ffffff" stroke-width="4"/>
+</svg>

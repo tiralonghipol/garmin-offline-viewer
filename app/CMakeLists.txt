@@ -22,3 +22,20 @@ target_link_libraries(fitviewer PRIVATE
     Qt6::Widgets Qt6::Network Qt6::Concurrent Qt6::DBus
 )
 fitviewer_set_warnings(fitviewer)
+target_compile_definitions(fitviewer PRIVATE FITVIEWER_VERSION="${FITVIEWER_VERSION_STRING}")
+
+# Window icon, compiled into the binary as a Qt resource (":/fit-viewer.png").
+qt_add_resources(fitviewer "icons"
+    PREFIX "/"
+    BASE "${PROJECT_SOURCE_DIR}/packaging"
+    FILES "${PROJECT_SOURCE_DIR}/packaging/fit-viewer.png"
+)
+
+# Standard Linux layout: used by `cmake --install` and to assemble the AppImage.
+install(TARGETS fitviewer RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES "${PROJECT_SOURCE_DIR}/packaging/fit-viewer.desktop"
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+install(FILES "${PROJECT_SOURCE_DIR}/packaging/fit-viewer.png"
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/256x256/apps)
+install(FILES "${PROJECT_SOURCE_DIR}/packaging/fit-viewer.svg"
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)

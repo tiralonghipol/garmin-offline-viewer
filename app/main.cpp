@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QIcon>
 
 #include "MainWindow.hpp"
 #include "Theme.hpp"
@@ -9,6 +10,9 @@ int main(int argc, char* argv[]) {
     QApplication::setOrganizationName(QStringLiteral("fit-viewer"));
     QApplication::setApplicationName(QStringLiteral("fit-viewer"));
     QApplication::setApplicationDisplayName(QStringLiteral("FIT Viewer"));
+    QApplication::setApplicationVersion(QStringLiteral(FITVIEWER_VERSION));
+    QApplication::setWindowIcon(QIcon(QStringLiteral(":/fit-viewer.png")));
+    QGuiApplication::setDesktopFileName(QStringLiteral("fit-viewer"));  // matches the .desktop file
     app.setStyleSheet(theme::styleSheet());
 
     MainWindow window;

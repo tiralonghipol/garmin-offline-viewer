@@ -1,6 +1,7 @@
 #include "MainWindow.hpp"
 
 #include <QAction>
+#include <QApplication>
 #include <QDir>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -54,8 +55,12 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     side->addSpacing(12);
     side->addWidget(openWatch);
     side->addWidget(openFile);
+    auto* version = new QLabel(tr("Version %1").arg(QApplication::applicationVersion()));
+    version->setObjectName(QStringLiteral("watchStatus"));
+    version->setContentsMargins(0, 0, 0, 8);
     side->addStretch();
     side->addWidget(watchStatus_);
+    side->addWidget(version);
 
     // --- pages ----------------------------------------------------------------
     listPage_ = new ActivityListPage;

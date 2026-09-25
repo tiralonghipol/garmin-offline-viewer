@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=FIT Viewer
+GenericName=Activity Viewer
+Comment=Browse Garmin FIT activities: routes, pace, heart rate and splits
+Exec=fitviewer %f
+Icon=fit-viewer
+Terminal=false
+Categories=Utility;
+Keywords=garmin;fit;running;cycling;forerunner;
+MimeType=application/vnd.ant.fit;
