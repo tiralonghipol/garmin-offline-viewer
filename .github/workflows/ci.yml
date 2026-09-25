@@ -1,0 +1,31 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        build_type: [Debug, Release]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system packages (Qt, Ninja)
+        run: sudo apt-get update && sudo apt-get install -y qt6-base-dev ninja-build
+
+      - name: Install Conan
+        run: pipx install conan && conan profile detect
+
+      - name: Conan install
+        run: >
+          conan install . --build=missing
+          -s build_type=${{ matrix.build_type }}
+          -c tools.cmake.cmaketoolchain:generator=Ninja
+
+      - name: Configure, build, test
+        run: |
+          preset=conan-$(echo ${{ matrix.build_type }} | tr '[:upper:]' '[:lower:]')
+          cmake --preset $preset -DFITVIEWER_WARNINGS_AS_ERRORS=ON
+          cmake --build --preset $preset
+          ctest --preset $preset --output-on-failure
