@@ -2,6 +2,7 @@
 
 #include <QMainWindow>
 
+class QAction;
 class QLabel;
 class QListWidget;
 class QTableView;
@@ -21,9 +22,12 @@ private:
     void openFolderDialog();
     void loadFolder(const QString& path);
     void loadFile(const QString& path);
+    void sendToGarminConnect();
 
     QListWidget* fileList_ = nullptr;
     QLabel* summary_ = nullptr;
     QTableView* table_ = nullptr;
     TrackPointModel* model_ = nullptr;
+    QAction* sendAction_ = nullptr;
+    QString currentFile_;
 };

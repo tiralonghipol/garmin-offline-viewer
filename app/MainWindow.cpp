@@ -14,21 +14,12 @@
 #include <QTableView>
 #include <QToolBar>
 #include <QVBoxLayout>
-#include <filesystem>
-
+#include "GarminConnect.hpp"
 #include "TrackPointModel.hpp"
 #include "fit/activity.hpp"
 #include "fit/format.hpp"
 
 namespace {
-
-std::filesystem::path toFsPath(const QString& path) {
-#ifdef Q_OS_WIN
-    return std::filesystem::path(path.toStdWString());
-#else
-    return std::filesystem::path(path.toStdString());
-#endif
-}
 
 QString summaryText(const fit::Activity& activity, const QString& fileName) {
     QStringList parts;
@@ -96,11 +87,22 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     auto* openFolder = fileMenu->addAction(tr("Open &watch folder…"), QKeySequence(tr("Ctrl+Shift+O")),
                                            this, &MainWindow::openFolderDialog);
     fileMenu->addSeparator();
+    sendAction_ = fileMenu->addAction(tr("&Send to Garmin Connect…"), QKeySequence(tr("Ctrl+U")),
+                                      this, &MainWindow::sendToGarminConnect);
+    sendAction_->setToolTip(tr("Open Garmin Connect's import page with this file ready to drop"));
+    sendAction_->setEnabled(false);
+    fileMenu->addSeparator();
     fileMenu->addAction(tr("&Quit"), QKeySequence::Quit, this, &QWidget::close);
 
     auto* toolbar = addToolBar(tr("Main"));
     toolbar->addAction(openFile);
     toolbar->addAction(openFolder);
+    toolbar->addSeparator();
+    toolbar->addAction(sendAction_);
+
+    // Right-click on a file in the list offers the same action.
+    fileList_->setContextMenuPolicy(Qt::ActionsContextMenu);
+    fileList_->addAction(sendAction_);
 
     connect(fileList_, &QListWidget::currentItemChanged, this, [this](QListWidgetItem* item) {
         if (item) loadFile(item->data(Qt::UserRole).toString());
@@ -148,14 +150,37 @@ void MainWindow::loadFolder(const QString& path) {
 
 void MainWindow::loadFile(const QString& path) {
     try {
-        auto activity = fit::loadActivity(toFsPath(path));
+        auto activity = fit::loadActivity(path.toStdString());  // UTF-8 on Linux
         summary_->setText(summaryText(activity, QDir::toNativeSeparators(path)));
         model_->setPoints(std::move(activity.points));
+        currentFile_ = path;
+        sendAction_->setEnabled(true);
         statusBar()->showMessage(tr("Loaded %1").arg(QFileInfo(path).fileName()), 5000);
     } catch (const std::exception& e) {
         model_->setPoints({});
+        currentFile_.clear();
+        sendAction_->setEnabled(false);
         summary_->setText(tr("Could not read file."));
         QMessageBox::warning(this, tr("FIT Viewer"),
                              tr("Failed to read %1:\n%2").arg(path, QString::fromUtf8(e.what())));
     }
+}
+
+void MainWindow::sendToGarminConnect() {
+    if (currentFile_.isEmpty()) return;
+    const auto result = garmin_connect::sendFile(currentFile_);
+
+    QString where = result.fileRevealed
+                        ? tr("The file is selected in your file manager: drag it onto the page.")
+                        : tr("Its folder is open in your file manager: drag the file onto the page.");
+    if (!result.browserOpened) {
+        QMessageBox::warning(this, tr("Send to Garmin Connect"),
+                             tr("Could not open a browser. Go to %1 manually.")
+                                 .arg(QString::fromLatin1(garmin_connect::kImportUrl)));
+        return;
+    }
+    statusBar()->showMessage(
+        tr("Garmin Connect import page opened. %1 Path copied: use Ctrl+L, Ctrl+V in the browser's "
+           "file dialog.").arg(where),
+        15000);
 }

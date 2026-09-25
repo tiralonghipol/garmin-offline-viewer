@@ -22,12 +22,20 @@ The core library knows nothing about Qt, so everything that can be tested
 (decoding, unit conversion, formatting) is tested without a GUI. The Qt app is
 a thin layer on top.
 
-## Prerequisites
+## Prerequisites (Ubuntu 24.04+)
 
-- C++20 compiler with `std::format` + chrono formatting: GCC 13+, Clang 17+ (libc++), or MSVC 2022
-- CMake 3.23+ and Ninja (optional but recommended)
-- Conan 2: `pip install conan`
-- Qt 6.4+ from your system (`apt install qt6-base-dev`, `brew install qt`, or the Qt online installer)
+```bash
+sudo apt install build-essential cmake ninja-build qt6-base-dev pipx
+pipx install conan
+```
+
+GCC 13+ is needed for `std::format` with chrono. Qt comes from apt, not Conan
+(Conan only provides gtest). `qt6-base-dev` includes the Widgets and DBus modules
+the app uses.
+
+If the app fails with `symbol lookup error: /snap/core20/...`, you launched it
+from a snap-packaged VS Code terminal: run it from a normal terminal or install
+VS Code from the `.deb`.
 
 ## Build with Conan
 
@@ -68,6 +76,20 @@ activities are in `GARMIN/ACTIVITY/*.FIT`.
 
 Copy files off the watch before experimenting; the viewer only reads, but
 it's a good habit.
+
+### Sending an activity to Garmin Connect
+
+**File → Send to Garmin Connect** (Ctrl+U, also on the file list's right-click
+menu) opens Connect's web *Import Data* page, selects the `.FIT` file in your
+file manager (via the `org.freedesktop.FileManager1` D-Bus interface) and copies
+its path to the clipboard. Drag the file onto the page, or click *Browse* and
+press Ctrl+L, Ctrl+V in the file dialog.
+
+It's semi-manual on purpose: Garmin has no public upload API for personal
+apps (the Connect Developer Program is partner-only and read-oriented), and the
+libraries that scripted the login stopped working when Garmin changed its auth
+flow. Normally the watch syncs itself through Garmin Connect Mobile or Garmin
+Express anyway; this is for files that didn't.
 
 ## How the pieces fit together
 
