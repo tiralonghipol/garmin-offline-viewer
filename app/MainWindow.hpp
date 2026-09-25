@@ -1,33 +1,42 @@
 #pragma once
 
+#include <QFutureWatcher>
 #include <QMainWindow>
 
-class QAction;
-class QLabel;
-class QListWidget;
-class QTableView;
-class TrackPointModel;
+#include "ActivityListModel.hpp"
 
+class ActivityDetailPage;
+class ActivityListPage;
+class QFileSystemWatcher;
+class QLabel;
+class QStackedWidget;
+
+// Dark sidebar + two pages (activity list, activity detail), like Garmin Connect.
 class MainWindow final : public QMainWindow {
     Q_OBJECT
 
 public:
     explicit MainWindow(QWidget* parent = nullptr);
 
-    // Opens a .fit file, or a folder (the watch root, GARMIN/ or ACTIVITY/).
+    // A .fit file (opens it) or a folder / watch root (lists it).
     void openPath(const QString& path);
 
 private:
-    void openFileDialog();
+    void loadFolder(const QString& folder);
+    void showActivity(const QString& path);
+    void showList();
     void openFolderDialog();
-    void loadFolder(const QString& path);
-    void loadFile(const QString& path);
-    void sendToGarminConnect();
+    void openFileDialog();
+    void sendToGarminConnect(const QString& path);
+    void checkWatch();
+    [[nodiscard]] static QString watchRoot();  // /media/$USER/GARMIN
 
-    QListWidget* fileList_ = nullptr;
-    QLabel* summary_ = nullptr;
-    QTableView* table_ = nullptr;
-    TrackPointModel* model_ = nullptr;
-    QAction* sendAction_ = nullptr;
-    QString currentFile_;
+    QStackedWidget* pages_ = nullptr;
+    ActivityListPage* listPage_ = nullptr;
+    ActivityDetailPage* detailPage_ = nullptr;
+    QLabel* watchStatus_ = nullptr;
+    QFutureWatcher<FolderScan> scan_;
+    QString currentFolder_;
+    QFileSystemWatcher* mounts_ = nullptr;
+    bool watchPresent_ = false;
 };

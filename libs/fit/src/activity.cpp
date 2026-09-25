@@ -14,9 +14,19 @@ constexpr std::uint8_t kLat = 0, kLong = 1, kAltitude = 2, kHeartRate = 3, kCade
 }
 namespace session {
 constexpr std::uint8_t kStartTime = 2, kSport = 5, kTotalElapsed = 7, kTotalTimer = 8,
-                       kTotalDistance = 9, kTotalCalories = 11, kAvgSpeed = 14, kAvgHeartRate = 16,
-                       kMaxHeartRate = 17, kEnhancedAvgSpeed = 124;
+                       kTotalDistance = 9, kTotalCalories = 11, kAvgSpeed = 14, kMaxSpeed = 15,
+                       kAvgHeartRate = 16, kMaxHeartRate = 17, kTotalAscent = 22,
+                       kTotalDescent = 23, kEnhancedAvgSpeed = 124, kEnhancedMaxSpeed = 125;
 }
+namespace lap {
+constexpr std::uint8_t kStartTime = 2, kTotalTimer = 8, kTotalDistance = 9, kAvgSpeed = 13,
+                       kAvgHeartRate = 15, kMaxHeartRate = 16, kTotalAscent = 21,
+                       kEnhancedAvgSpeed = 110;
+}
+namespace file_creator {
+constexpr std::uint8_t kSoftwareVersion = 0;
+}
+constexpr std::uint16_t kFileCreatorMesg = 49;
 
 // FIT stores physical values as integers: physical = raw / scale - offset.
 std::optional<double> scaled(const Message& m, std::uint8_t field, double scale,
@@ -54,6 +64,7 @@ FileInfo toFileInfo(const Message& m) {
         .product = integer(m, file_id::kProduct),
         .serialNumber = m.intValue(file_id::kSerial),
         .timeCreated = timeValue(m, file_id::kTimeCreated),
+        .softwareVersion = std::nullopt,  // lives in the file_creator message
     };
 }
 
@@ -82,7 +93,25 @@ SessionSummary toSession(const Message& m) {
         .totalDistanceM = scaled(m, kTotalDistance, 100.0),
         .avgSpeedMps =
             firstOf(scaled(m, kEnhancedAvgSpeed, 1000.0), scaled(m, kAvgSpeed, 1000.0)),
+        .maxSpeedMps =
+            firstOf(scaled(m, kEnhancedMaxSpeed, 1000.0), scaled(m, kMaxSpeed, 1000.0)),
+        .totalAscentM = scaled(m, kTotalAscent, 1.0),
+        .totalDescentM = scaled(m, kTotalDescent, 1.0),
         .totalCalories = integer(m, kTotalCalories),
+        .avgHeartRate = integer(m, kAvgHeartRate),
+        .maxHeartRate = integer(m, kMaxHeartRate),
+    };
+}
+
+Lap toLap(const Message& m) {
+    using namespace lap;
+    return {
+        .startTime = timeValue(m, kStartTime),
+        .totalTimerS = scaled(m, kTotalTimer, 1000.0),
+        .totalDistanceM = scaled(m, kTotalDistance, 100.0),
+        .avgSpeedMps =
+            firstOf(scaled(m, kEnhancedAvgSpeed, 1000.0), scaled(m, kAvgSpeed, 1000.0)),
+        .totalAscentM = scaled(m, kTotalAscent, 1.0),
         .avgHeartRate = integer(m, kAvgHeartRate),
         .maxHeartRate = integer(m, kMaxHeartRate),
     };
@@ -112,15 +141,60 @@ std::string sportName(int sport) {
     }
 }
 
+std::string productName(std::optional<int> manufacturer, std::optional<int> product) {
+    constexpr int kGarmin = 1;
+    if (manufacturer != kGarmin || !product) return product ? "Device " + std::to_string(*product) : "Device";
+    switch (*product) {
+        // Forerunner 35 and its regional variants (garmin_product in the FIT profile)
+        case 2503: case 2650: case 2667: case 2668: case 2727: case 2814:
+            return "Forerunner 35";
+        case 2431: return "Forerunner 235";
+        case 3076: return "Forerunner 245";
+        case 3282: return "Forerunner 45";
+        case 3869: return "Forerunner 55";
+        case 2691: return "Forerunner 935";
+        default: return "Garmin " + std::to_string(*product);
+    }
+}
+
+std::string activityTitle(std::optional<int> sport, int localHour) {
+    const char* partOfDay = localHour >= 5 && localHour < 12   ? "Morning"
+                            : localHour >= 12 && localHour < 17 ? "Afternoon"
+                            : localHour >= 17 && localHour < 22 ? "Evening"
+                                                                : "Night";
+    std::string noun = "Activity";
+    if (sport) {
+        switch (*sport) {
+            case 1: noun = "Run"; break;
+            case 2: noun = "Ride"; break;
+            case 5: noun = "Swim"; break;
+            case 11: noun = "Walk"; break;
+            case 17: noun = "Hike"; break;
+            case 4: case 10: noun = "Workout"; break;
+            default: break;
+        }
+    }
+    return std::string(partOfDay) + ' ' + noun;
+}
+
 Activity toActivity(const DecodedFile& decoded) {
     Activity activity;
     for (const Message& m : decoded.messages) {
         switch (m.globalNumber) {
-            case mesg::kFileId:
+            case mesg::kFileId: {
+                const auto version = activity.file.softwareVersion;  // file_creator may come first
                 activity.file = toFileInfo(m);
+                activity.file.softwareVersion = version;
                 break;
+            }
             case mesg::kSession:
                 activity.sessions.push_back(toSession(m));
+                break;
+            case mesg::kLap:
+                activity.laps.push_back(toLap(m));
+                break;
+            case kFileCreatorMesg:
+                activity.file.softwareVersion = scaled(m, file_creator::kSoftwareVersion, 100.0);
                 break;
             case mesg::kRecord:
                 // A track point without a time is useless for plotting.

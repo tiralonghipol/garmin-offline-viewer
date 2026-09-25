@@ -2,7 +2,8 @@
 
 A small learning project for **CMake**, **Conan 2**, **GoogleTest** and **Qt 6**:
 a from-scratch decoder for Garmin `.FIT` activity files (as written by a
-Forerunner 35), a Qt Widgets viewer and a command-line dump tool.
+Forerunner 35), a Garmin Connect-style Qt Widgets viewer and a command-line
+dump tool.
 
 ```
 fit-viewer/
@@ -10,10 +11,16 @@ fit-viewer/
 ├── conanfile.py             dependencies (gtest) + CMake integration
 ├── cmake/CompilerWarnings.cmake
 ├── libs/fit/                core library, no Qt dependency
-│   ├── include/fit/         public headers (crc, types, decoder, activity, format)
+│   ├── include/fit/         decoder, activity model, analysis (totals, ascent,
+│   │                        smoothing), geo (Web Mercator), format
 │   └── src/
 ├── tools/fitdump/           CLI: summary or raw dump of a .fit file
-├── app/                     Qt 6 Widgets viewer (model/view)
+├── app/                     Qt 6 Widgets viewer
+│   ├── MainWindow           dark sidebar, page switching, watch detection
+│   ├── ActivityListPage     search + sport filter, cards (ActivityCardDelegate)
+│   ├── ActivityDetailPage   stats, map, charts, device, splits
+│   ├── RouteMapWidget       OpenStreetMap tiles + speed-coloured route
+│   └── ChartWidget          QPainter area charts with a shared hover cursor
 ├── tests/                   GoogleTest suite + FitBuilder test helper
 └── .github/workflows/ci.yml
 ```
@@ -30,8 +37,9 @@ pipx install conan
 ```
 
 GCC 13+ is needed for `std::format` with chrono. Qt comes from apt, not Conan
-(Conan only provides gtest). `qt6-base-dev` includes the Widgets and DBus modules
-the app uses.
+(Conan only provides gtest). `qt6-base-dev` includes all the modules the app
+uses: Widgets, Network (map tiles), Concurrent (loading files in the
+background) and DBus (file manager integration).
 
 If the app fails with `symbol lookup error: /snap/core20/...`, you launched it
 from a snap-packaged VS Code terminal: run it from a normal terminal or install
@@ -69,10 +77,22 @@ The Forerunner 35 shows up as a USB mass-storage drive called `GARMIN`;
 activities are in `GARMIN/ACTIVITY/*.FIT`.
 
 ```bash
-./build/Release/app/fitviewer /media/$USER/GARMIN      # or open it from File → Open watch folder
+./build/Release/app/fitviewer                          # auto-loads the watch if plugged in
+./build/Release/app/fitviewer ~/fit-backup             # or any folder / single .fit file
 ./build/Release/tools/fitdump/fitdump some.fit         # summary
 ./build/Release/tools/fitdump/fitdump some.fit --raw   # every message, raw field values
 ```
+
+The app watches `/media/$USER` and loads the activities as soon as the watch
+is plugged in; otherwise it reopens the last folder. Click an activity for the
+detail page: route map coloured by pace, pace/heart-rate/elevation charts
+(hovering one moves a cursor on all of them and a dot on the map), device info
+and 1 km splits. Esc goes back; Ctrl+O opens a file, Ctrl+Shift+O a folder.
+
+Map tiles come from openstreetmap.org and are cached in
+`~/.cache/fit-viewer/tiles` (per OSM's tile usage policy: identified user
+agent, caching, no bulk downloads). Offline, the route is drawn on a plain
+background.
 
 Copy files off the watch before experimenting; the viewer only reads, but
 it's a good habit.
@@ -126,8 +146,8 @@ The full spec and profile are in Garmin's FIT SDK.
 
 ## Exercises to extend it
 
-1. Plot heart rate and pace with **QtCharts** (add the component to `find_package`).
-2. Decode **lap** messages (global 19) and show splits; test-drive it with `FitBuilder`.
+1. Add a **heart-rate zones** card (time in zone 1-5) to the detail page, with the maths in `libs/fit` and tests first.
+2. Show **lap markers** on the map and charts; highlight a lap when its row in the splits table is hovered.
 3. Replace repetitive tests with **parameterised tests** (`TEST_P`) over all base types.
 4. Add an **ASan/UBSan** build via a `CMakePresets.json` of your own, and a **libFuzzer** target for `fit::decode`.
 5. Export **GPX**, then turn `libs/fit` into a real Conan package: `package()` / `package_info()` plus a `test_package/`, and `conan create .`.

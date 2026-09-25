@@ -1,8 +1,10 @@
 add_library(fit
     src/activity.cpp
+    src/analysis.cpp
     src/crc.cpp
     src/decoder.cpp
     src/format.cpp
+    src/geo.cpp
     src/types.cpp
 )
 # Namespaced alias: consumers write fitviewer::fit, and a typo becomes a
@@ -17,9 +19,11 @@ target_sources(fit
         BASE_DIRS include
         FILES
             include/fit/activity.hpp
+            include/fit/analysis.hpp
             include/fit/crc.hpp
             include/fit/decoder.hpp
             include/fit/format.hpp
+            include/fit/geo.hpp
             include/fit/types.hpp
 )
 

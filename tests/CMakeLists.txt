@@ -5,9 +5,11 @@ find_package(GTest REQUIRED)
 add_executable(fit_tests
     fit_builder.hpp
     test_activity.cpp
+    test_analysis.cpp
     test_crc.cpp
     test_decoder.cpp
     test_format.cpp
+    test_geo.cpp
 )
 target_link_libraries(fit_tests PRIVATE fitviewer::fit GTest::gtest_main)
 fitviewer_set_warnings(fit_tests)

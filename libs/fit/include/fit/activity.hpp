@@ -19,6 +19,10 @@ inline constexpr std::int64_t kFitEpochUnixSeconds = 631065600;
 [[nodiscard]] Timestamp toTimestamp(std::uint32_t fitSeconds) noexcept;
 [[nodiscard]] double semicirclesToDegrees(std::int32_t semicircles) noexcept;
 [[nodiscard]] std::string sportName(int sport);
+// "Forerunner 35" for known Garmin products, otherwise "Garmin 1234" / "Device".
+[[nodiscard]] std::string productName(std::optional<int> manufacturer, std::optional<int> product);
+// Strava-style name from sport and local start hour, e.g. "Morning Run".
+[[nodiscard]] std::string activityTitle(std::optional<int> sport, int localHour);
 
 struct FileInfo {
     std::optional<int> type;          // 4 = activity
@@ -26,6 +30,7 @@ struct FileInfo {
     std::optional<int> product;
     std::optional<std::int64_t> serialNumber;
     std::optional<Timestamp> timeCreated;
+    std::optional<double> softwareVersion;  // from file_creator, e.g. 3.60
 };
 
 struct TrackPoint {
@@ -46,7 +51,21 @@ struct SessionSummary {
     std::optional<double> totalTimerS;
     std::optional<double> totalDistanceM;
     std::optional<double> avgSpeedMps;
+    std::optional<double> maxSpeedMps;
+    std::optional<double> totalAscentM;
+    std::optional<double> totalDescentM;
     std::optional<int> totalCalories;
+    std::optional<int> avgHeartRate;
+    std::optional<int> maxHeartRate;
+};
+
+// A lap is one split: auto-lap (every 1 km by default on the FR35) or a button press.
+struct Lap {
+    std::optional<Timestamp> startTime;
+    std::optional<double> totalTimerS;
+    std::optional<double> totalDistanceM;
+    std::optional<double> avgSpeedMps;
+    std::optional<double> totalAscentM;
     std::optional<int> avgHeartRate;
     std::optional<int> maxHeartRate;
 };
@@ -55,6 +74,7 @@ struct SessionSummary {
 struct Activity {
     FileInfo file;
     std::vector<SessionSummary> sessions;
+    std::vector<Lap> laps;
     std::vector<TrackPoint> points;
 };
 
