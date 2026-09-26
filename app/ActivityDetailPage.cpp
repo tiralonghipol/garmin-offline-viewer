@@ -438,6 +438,7 @@ bool ActivityDetailPage::showActivity(const QString& path, QString* error) {
 
     series_[0].config = {
         .title = pace ? tr("Pace") : tr("Speed"),
+        .unit = pace ? tr("min/km") : tr("km/h"),
         .color = theme::kPace,
         .invertY = pace,
         .formatY = pace ? std::function<QString(double)>([](double s) { return QString::fromStdString(fit::formatDuration(s)); })
@@ -446,16 +447,18 @@ bool ActivityDetailPage::showActivity(const QString& path, QString* error) {
                                        : std::nullopt,
     };
     series_[0].y = std::move(paceOrSpeed);
-    series_[1].config = {.title = tr("Heart Rate"), .color = theme::kHeartRate, .invertY = false,
+    series_[1].config = {.title = tr("Heart Rate"), .unit = tr("bpm"), .color = theme::kHeartRate, .invertY = false,
                          .formatY = [](double v) { return QStringLiteral("%1").arg(std::lround(v)); },
                          .average = totals_.avgHeartRate ? std::optional<double>(*totals_.avgHeartRate) : std::nullopt};
     series_[1].y = std::move(heartRate);
-    series_[2].config = {.title = tr("Elevation"), .color = theme::kElevation, .invertY = false,
-                         .formatY = [](double v) { return QStringLiteral("%1 m").arg(std::lround(v)); },
+    series_[2].config = {.title = tr("Elevation"), .unit = tr("m"), .color = theme::kElevation, .invertY = false,
+                         .formatY = [](double v) { return QStringLiteral("%1").arg(std::lround(v)); },
                          .average = std::nullopt};
     series_[2].y = fit::movingAverage(altitude, 2);
     if (!anyFinite(altitude)) std::fill(series_[2].y.begin(), series_[2].y.end(), kNaN);
-    series_[3].config = {.title = running ? tr("Run Cadence") : tr("Cadence"), .color = theme::kCadence,
+    series_[3].config = {.title = running ? tr("Run Cadence") : tr("Cadence"),
+                         .unit = running ? tr("spm") : tr("rpm"),
+                         .color = theme::kCadence,
                          .invertY = false,
                          .formatY = [](double v) { return QStringLiteral("%1").arg(std::lround(v)); },
                          .average = totals_.avgCadence ? std::optional{*totals_.avgCadence * (running ? 2.0 : 1.0)}

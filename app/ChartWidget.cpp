@@ -46,7 +46,16 @@ void ChartWidget::setHoverIndex(std::optional<std::size_t> index) {
 QString ChartWidget::formatX(double x) const {
     if (axis_ == XAxis::Time) return QString::fromStdString(fit::formatDuration(x));
     const double km = x / 1000.0;
-    return QStringLiteral("%1 km").arg(QLocale().toString(km, 'f', km < 10 ? 2 : 1));
+    return QLocale().toString(km, 'f', km < 10 ? 2 : 1);
+}
+
+QString ChartWidget::xUnit() const {
+    if (axis_ == XAxis::Distance) return tr("km");
+    return !x_.empty() && x_.back() >= 3600 ? tr("h:mm:ss") : tr("m:ss");
+}
+
+QString ChartWidget::withUnit(const QString& value) const {
+    return config_.unit.isEmpty() ? value : QStringLiteral("%1 %2").arg(value, config_.unit);
 }
 
 QRectF ChartWidget::plotRect() const { return QRectF(rect()).adjusted(56, 30, -14, -24); }
@@ -85,6 +94,11 @@ void ChartWidget::paintEvent(QPaintEvent*) {
     p.drawEllipse(QPointF(10, 14), 5, 5);
     p.setPen(theme::kText);
     p.drawText(QPointF(22, 19), config_.title);
+    if (!config_.unit.isEmpty()) {  // unit in muted text after the title: "Pace  min/km"
+        const double titleWidth = QFontMetricsF(font()).horizontalAdvance(config_.title);
+        p.setPen(theme::kMuted);
+        p.drawText(QPointF(22 + titleWidth + 8, 19), config_.unit);
+    }
 
     if (x_.empty()) {
         p.setPen(theme::kMuted);
@@ -113,12 +127,21 @@ void ChartWidget::paintEvent(QPaintEvent*) {
     const auto& steps = axis_ == XAxis::Time ? timeSteps : distanceSteps;
     const double step = *std::find_if(steps.begin(), steps.end() - 1,
                                       [end](double s) { return end / s <= 10.0; });
+    // Axis unit caption at the right end of the label row; ticks under it are skipped.
+    const QString unitCaption = xUnit();
+    const double captionWidth = QFontMetricsF(small).horizontalAdvance(unitCaption);
+    const QRectF captionRect(r.right() - captionWidth, r.bottom() + 4, captionWidth, 16);
+    p.setPen(theme::kText);
+    p.drawText(captionRect, Qt::AlignRight | Qt::AlignVCenter, unitCaption);
     for (double t = step; t < end; t += step) {
         const double x = toPixelX(t);
         p.setPen(QPen(QColor(0xf2, 0xf2, 0xf2), 1));
         p.drawLine(QPointF(x, r.top()), QPointF(x, r.bottom()));
+        const QString label = formatX(t);
+        const double half = QFontMetricsF(small).horizontalAdvance(label) / 2 + 4;
+        if (x + half >= captionRect.left()) continue;
         p.setPen(theme::kMuted);
-        p.drawText(QRectF(x - 34, r.bottom() + 4, 68, 16), Qt::AlignCenter, formatX(t));
+        p.drawText(QRectF(x - 34, r.bottom() + 4, 68, 16), Qt::AlignCenter, label);
     }
 
     // Filled area per run of valid samples
@@ -146,8 +169,8 @@ void ChartWidget::paintEvent(QPaintEvent*) {
         const double y = toPixelY(*config_.average);
         p.setPen(QPen(QColor(0x55, 0x55, 0x55), 1, Qt::DashLine));
         p.drawLine(QPointF(r.left(), y), QPointF(r.right(), y));
-        const QString text = tr("Avg: %1").arg(config_.formatY ? config_.formatY(*config_.average)
-                                                               : QString::number(*config_.average));
+        const QString text = tr("Avg: %1").arg(withUnit(config_.formatY ? config_.formatY(*config_.average)
+                                                                        : QString::number(*config_.average)));
         const double w = QFontMetricsF(small).horizontalAdvance(text) + 10;
         const QRectF box(r.right() - w, y - 18, w, 16);
         p.fillRect(box, QColor(255, 255, 255, 220));
@@ -169,8 +192,10 @@ void ChartWidget::paintEvent(QPaintEvent*) {
                 const QString value = !std::isfinite(y_[*idx]) ? QStringLiteral("--")
                                       : config_.formatY    ? config_.formatY(y_[*idx])
                                                            : QString::number(y_[*idx]);
+                const QString where = axis_ == XAxis::Distance ? QStringLiteral("%1 km").arg(formatX(x_[*idx]))
+                                                               : formatX(x_[*idx]);
                 const QString text = QStringLiteral("%1  ·  %2")
-                                         .arg(value, formatX(x_[*idx]));
+                                         .arg(std::isfinite(y_[*idx]) ? withUnit(value) : value, where);
                 const double w = QFontMetricsF(small).horizontalAdvance(text) + 14;
                 QRectF box(std::min(x + 8, r.right() - w), r.top(), w, 20);
                 p.setPen(Qt::NoPen);

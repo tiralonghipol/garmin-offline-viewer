@@ -18,6 +18,7 @@ class ChartWidget final : public QWidget {
 public:
     struct Config {
         QString title;
+        QString unit;  // y-axis unit, e.g. "min/km", "bpm"; shown after the title
         QColor color;
         bool invertY = false;  // pace: faster (smaller) values at the top
         std::function<QString(double)> formatY;
@@ -46,7 +47,9 @@ private:
     double toPixelX(double x) const;
     double toPixelY(double value) const;
     std::optional<std::size_t> nearestIndex(double x) const;
-    QString formatX(double x) const;
+    QString formatX(double x) const;  // tick label, without unit
+    QString xUnit() const;            // "m:ss", "h:mm:ss" or "km"
+    QString withUnit(const QString& value) const;
 
     Config config_;
     std::vector<double> x_;
