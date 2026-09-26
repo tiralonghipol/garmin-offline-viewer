@@ -1,4 +1,4 @@
-# fit-viewer
+# garmin-offline-viewer
 
 A small learning project for **CMake**, **Conan 2**, **GoogleTest** and **Qt 6**:
 a from-scratch decoder for Garmin `.FIT` activity files (as written by a
@@ -179,12 +179,3 @@ type. Compressed-timestamp headers store only the low 5 bits of the time.
 Values are integers with a scale/offset (e.g. altitude = raw/5 − 500 m),
 positions are in "semicircles" (2³¹ = 180°), and time counts from 1989-12-31.
 The full spec and profile are in Garmin's FIT SDK.
-
-## Exercises to extend it
-
-1. Draw the **heart-rate zones** as coloured bands behind the heart-rate chart (the zone maths is already in `libs/fit`).
-2. Show **lap markers** on the map and charts; highlight a lap when its row in the splits table is hovered.
-3. Replace repetitive tests with **parameterised tests** (`TEST_P`) over all base types.
-4. Add an **ASan/UBSan** build via a `CMakePresets.json` of your own, and a **libFuzzer** target for `fit::decode`.
-5. Export **GPX**, then turn `libs/fit` into a real Conan package: `package()` / `package_info()` plus a `test_package/`, and `conan create .`.
-6. Use **CPack** to also produce a `.deb` from the existing `install()` rules.
