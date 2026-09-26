@@ -49,7 +49,8 @@ private:
     [[nodiscard]] double worldPixels() const;
     [[nodiscard]] QPointF toScreen(fit::geo::WorldPoint p) const;
     [[nodiscard]] fit::geo::WorldPoint toWorld(QPointF screen) const;
-    void setZoom(int zoom, QPointF anchor);
+    // Changes the zoom level and re-centres the map on the start of the route.
+    void setZoom(int zoom);
     void drawTiles(QPainter& p);
     void requestTile(int z, int x, int y);
     void onTileFinished(QNetworkReply* reply);

@@ -54,8 +54,8 @@ RouteMapWidget::RouteMapWidget(QWidget* parent) : QWidget(parent) {
     zoomIn->move(12, 12);
     zoomOut->move(48, 12);
     fit->move(84, 12);
-    connect(zoomIn, &QToolButton::clicked, this, [this] { setZoom(zoom_ + 1, rect().center()); });
-    connect(zoomOut, &QToolButton::clicked, this, [this] { setZoom(zoom_ - 1, rect().center()); });
+    connect(zoomIn, &QToolButton::clicked, this, [this] { setZoom(zoom_ + 1); });
+    connect(zoomOut, &QToolButton::clicked, this, [this] { setZoom(zoom_ - 1); });
     connect(fit, &QToolButton::clicked, this, &RouteMapWidget::fitToTrack);
 }
 
@@ -107,13 +107,11 @@ fit::geo::WorldPoint RouteMapWidget::toWorld(QPointF s) const {
     return {centre_.x + (s.x() - width() / 2.0) / worldPixels(), centre_.y + (s.y() - height() / 2.0) / worldPixels()};
 }
 
-void RouteMapWidget::setZoom(int zoom, QPointF anchor) {
-    zoom = std::clamp(zoom, kMinZoom, kMaxZoom);
-    if (zoom == zoom_) return;
-    const auto before = toWorld(anchor);  // keep the point under the cursor fixed
-    zoom_ = zoom;
-    centre_ = {before.x - (anchor.x() - width() / 2.0) / worldPixels(),
-               before.y - (anchor.y() - height() / 2.0) / worldPixels()};
+void RouteMapWidget::setZoom(int zoom) {
+    zoom_ = std::clamp(zoom, kMinZoom, kMaxZoom);
+    // Zooming always brings the start marker back to the middle, so the path is
+    // explored from where the activity began (also after panning away).
+    if (!world_.empty()) centre_ = world_.front();
     update();
 }
 
@@ -247,7 +245,7 @@ void RouteMapWidget::resizeEvent(QResizeEvent* event) {
 }
 
 void RouteMapWidget::wheelEvent(QWheelEvent* event) {
-    setZoom(zoom_ + (event->angleDelta().y() > 0 ? 1 : -1), event->position());
+    setZoom(zoom_ + (event->angleDelta().y() > 0 ? 1 : -1));
     event->accept();
 }
 
